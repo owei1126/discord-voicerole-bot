@@ -1,0 +1,14 @@
+{
+  "name": "voice-role-bot",
+  "version": "1.0.0",
+  "description": "Auto role when joining a voice channel",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.11.0",
+    "dotenv": "^16.3.1"
+  }
+}

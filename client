@@ -1,0 +1,40 @@
+
+import dotenv from "dotenv";
+dotenv.config();
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMembers,
+  ],
+});
+
+const VOICE_CHANNEL_ID = process.env.VOICE_CHANNEL_ID;
+const ROLE_ID = process.env.ROLE_ID;
+
+client.once("ready", () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+});
+
+client.on("voiceStateUpdate", async (oldState, newState) => {
+  const member = newState.member;
+
+  // 加入語音頻道
+  if (newState.channelId === VOICE_CHANNEL_ID && oldState.channelId !== VOICE_CHANNEL_ID) {
+    if (!member.roles.cache.has(ROLE_ID)) {
+      await member.roles.add(ROLE_ID);
+      console.log(`✅ 加上身分組給 ${member.user.tag}`);
+    }
+  }
+
+  // 離開語音頻道
+  if (oldState.channelId === VOICE_CHANNEL_ID && newState.channelId !== VOICE_CHANNEL_ID) {
+    if (member.roles.cache.has(ROLE_ID)) {
+      await member.roles.remove(ROLE_ID);
+      console.log(`❌ 移除身分組給 ${member.user.tag}`);
+    }
+  }
+});
+
+client.login(process.env.TOKEN);
