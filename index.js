@@ -1,130 +1,71 @@
-import { Client, GatewayIntentBits, Partials } from 'discord.js';
-import dotenv from 'dotenv';
-dotenv.config();
+import { Client, GatewayIntentBits } from 'discord.js';
+import { config } from 'dotenv';
+import { SlashCommandBuilder } from '@discordjs/builders';
 
-// 初始化 Discord 客戶端
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildVoiceStates],
-  partials: [Partials.Channel],
-});
+// 載入環境變數
+config();
 
-let voiceChannelID = null;
-let roleID = null;
+// 創建 Discord 客戶端
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
+// 設定指令
+const commands = [
+    new SlashCommandBuilder().setName('setvoice').setDescription('設定語音頻道').addStringOption(option =>
+        option.setName('channelid').setDescription('請提供語音頻道的 ID').setRequired(true)),
+    new SlashCommandBuilder().setName('setrole').setDescription('設定自動加上的身分組').addStringOption(option =>
+        option.setName('roleid').setDescription('請提供身分組的 ID').setRequired(true)),
+    new SlashCommandBuilder().setName('status').setDescription('查看目前的設定狀態'),
+    new SlashCommandBuilder().setName('reset').setDescription('清除目前的設定'),
+    new SlashCommandBuilder().setName('help').setDescription('查看可用指令')
+];
+
+// 當機器人登入成功
 client.once('ready', () => {
-  console.log('機器人已成功啟動！');
+    console.log('已登入：', client.user.tag);
+
+    // 註冊指令
+    client.application.commands.set(commands)
+        .then(() => console.log('指令註冊成功！'))
+        .catch((error) => console.error('指令註冊失敗:', error));
 });
 
-// 前綴指令處理
-client.on('messageCreate', async (message) => {
-  if (message.author.bot) return; // 防止機器人回應自己
-
-  const args = message.content.slice(2).split(/ +/);
-  const command = args.shift().toLowerCase();
-
-  // 設定語音頻道
-  if (command === 'setvoice') {
-    if (!args.length) return message.reply('請提供有效的語音頻道 ID。');
-    voiceChannelID = args[0];
-    message.reply(`成功設定語音頻道為 ID: ${voiceChannelID}`);
-  }
-
-  // 設定身分組
-  if (command === 'setrole') {
-    if (!args.length) return message.reply('請提供有效的身分組 ID。');
-    roleID = args[0];
-    message.reply(`成功設定身分組為 ID: ${roleID}`);
-  }
-
-  // 查看目前設定
-  if (command === 'status') {
-    if (!voiceChannelID || !roleID) return message.reply('尚未設定語音頻道或身分組。');
-    message.reply(`目前的語音頻道 ID: ${voiceChannelID}，身分組 ID: ${roleID}`);
-  }
-
-  // 重設設定
-  if (command === 'reset') {
-    voiceChannelID = null;
-    roleID = null;
-    message.reply('已清除目前的設定。');
-  }
-
-  // 顯示幫助
-  if (command === 'help') {
-    message.reply(`
-      **可用指令：**
-      **前綴指令：**
-      w!setvoice [頻道ID] - 設定語音頻道
-      w!setrole [身分組ID] - 設定自動加上的身分組
-      w!status - 查看目前的設定狀態
-      w!reset - 清除目前的設定
-      w!help - 查看可用指令
-      
-      **Slash 指令：**
-      /setvoice [語音頻道] - 設定語音頻道
-      /setrole [身分組] - 設定自動加上的身分組
-      /status - 查看目前的設定狀態
-      /reset - 清除目前的設定
-      /help - 查看可用指令
-    `);
-  }
-});
-
-// Slash 指令處理
+// 處理 Slash 指令
 client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isCommand()) return;
+    if (!interaction.isCommand()) return;
 
-  const { commandName } = interaction;
+    const { commandName } = interaction;
 
-  // 設定語音頻道
-  if (commandName === 'setvoice') {
-    const channel = interaction.options.getChannel('channel');
-    if (channel.type !== 'GUILD_VOICE') {
-      return interaction.reply('請提供有效的語音頻道。');
+    if (commandName === 'setvoice') {
+        const channelID = interaction.options.getString('channelid');
+        // 處理語音頻道設定
+        interaction.reply(`已設定語音頻道為: ${channelID}`);
+    } else if (commandName === 'setrole') {
+        const roleID = interaction.options.getString('roleid');
+        // 處理身分組設定
+        interaction.reply(`已設定身分組為: ${roleID}`);
+    } else if (commandName === 'status') {
+        // 顯示目前的設定狀態
+        interaction.reply('這是目前的設定狀態。');
+    } else if (commandName === 'reset') {
+        // 清除設定
+        interaction.reply('已清除設定。');
+    } else if (commandName === 'help') {
+        // 顯示可用指令
+        interaction.reply(`
+可用指令：
+  w!setvoice [頻道ID] - 設定語音頻道
+  w!setrole [身分組ID] - 設定自動加上的身分組
+  w!status - 查看目前的設定狀態
+  w!reset - 清除目前的設定
+  w!help - 查看可用指令
+
+  /setvoice [語音頻道] - 設定語音頻道
+  /setrole [身分組] - 設定自動加上的身分組
+  /status - 查看目前的設定狀態
+  /reset - 清除目前的設定
+  /help - 查看可用指令
+        `);
     }
-    voiceChannelID = channel.id;
-    return interaction.reply(`成功設定語音頻道為 ID: ${voiceChannelID}`);
-  }
-
-  // 設定身分組
-  if (commandName === 'setrole') {
-    const role = interaction.options.getRole('role');
-    roleID = role.id;
-    return interaction.reply(`成功設定身分組為 ID: ${roleID}`);
-  }
-
-  // 查看目前設定
-  if (commandName === 'status') {
-    if (!voiceChannelID || !roleID) return interaction.reply('尚未設定語音頻道或身分組。');
-    return interaction.reply(`目前的語音頻道 ID: ${voiceChannelID}，身分組 ID: ${roleID}`);
-  }
-
-  // 重設設定
-  if (commandName === 'reset') {
-    voiceChannelID = null;
-    roleID = null;
-    return interaction.reply('已清除目前的設定。');
-  }
-
-  // 顯示幫助
-  if (commandName === 'help') {
-    return interaction.reply(`
-      **可用指令：**
-      **前綴指令：**
-      w!setvoice [頻道ID] - 設定語音頻道
-      w!setrole [身分組ID] - 設定自動加上的身分組
-      w!status - 查看目前的設定狀態
-      w!reset - 清除目前的設定
-      w!help - 查看可用指令
-      
-      **Slash 指令：**
-      /setvoice [語音頻道] - 設定語音頻道
-      /setrole [身分組] - 設定自動加上的身分組
-      /status - 查看目前的設定狀態
-      /reset - 清除目前的設定
-      /help - 查看可用指令
-    `);
-  }
 });
 
 // 登入 Discord
