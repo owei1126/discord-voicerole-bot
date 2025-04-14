@@ -58,9 +58,8 @@ client.once('ready', async () => {
     { name: 'help', description: '查看可用指令' },
 
     // 📋 日誌相關 Slash 指令
-    ...loggerSlashCommands.map(cmd => cmd.toJSON())
+    ...loggerSlashCommands.map(cmd => cmd.data.toJSON())
   ];
-
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
   try {
