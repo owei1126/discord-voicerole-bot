@@ -1,8 +1,9 @@
-// index.js
+// ✅ 載入 Discord.js 所需模組與 dotenv 用來讀取 .env
 import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } from 'discord.js';
 import dotenv from 'dotenv';
-dotenv.config();
+dotenv.config(); // 載入環境變數（.env）
 
+// ✅ 初始化 Discord 機器人
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -13,9 +14,13 @@ const client = new Client({
   ]
 });
 
+// ✅ 儲存每個伺服器的語音頻道與身分組設定
 const guildSettings = new Map();
+
+// ✅ 指令前綴
 const prefix = 'w!';
 
+// 🔧 機器人啟動後註冊 Slash 指令
 client.once('ready', async () => {
   console.log(`🤖 已登入：${client.user.tag}`);
 
@@ -63,6 +68,7 @@ client.once('ready', async () => {
   }
 });
 
+// ✅ Slash 指令處理器
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -123,8 +129,9 @@ ${prefix}help`);
   }
 });
 
+// ✅ 前綴文字指令處理器
 client.on('messageCreate', async message => {
-  if (message.author.bot || !message.content.startsWith(prefix)) return;
+  if (message.author.bot || !message.content.toLowerCase().startsWith(prefix.toLowerCase())) return;
 
   const args = message.content.slice(prefix.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
@@ -190,6 +197,7 @@ ${prefix}help`);
   }
 });
 
+// ✅ 語音頻道更新事件：進入時加上身分組，離開時移除
 client.on('voiceStateUpdate', async (oldState, newState) => {
   const guildId = newState.guild.id;
   const setting = guildSettings.get(guildId);
@@ -206,4 +214,5 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   }
 });
 
+// ✅ 登入機器人
 client.login(process.env.DISCORD_TOKEN);
