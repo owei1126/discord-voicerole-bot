@@ -173,6 +173,7 @@ function getHelpText() {
 **🔹 Slash 指令：**
 /setvoice [語音頻道]        → 設定語音頻道。  
 /setrole [身分組]            → 設定進語音時自動加上的身分組。  
+/setlogchannel [文字頻道]    → 設定紀錄頻道，所有語音與刪除事件都會自動發送紀錄。  
 /status                     → 查看目前語音與身分組設定狀態。  
 /reset                      → 清除目前的語音與身分組設定。  
 /help                       → 顯示此幫助指令清單與說明。  

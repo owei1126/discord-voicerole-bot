@@ -153,6 +153,30 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
 });
 
 // =============================
+// 🚷 成員狀態變更（踢出語音）
+// =============================
+
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+  const guildId = newMember.guild.id;
+  const settings = config[guildId];
+  if (!settings || !settings.logChannel) return;
+  
+  const logChannel = await newMember.guild.channels.fetch(settings.logChannel);
+  const oldVoiceChannel = oldMember.voice?.channel;
+  const newVoiceChannel = newMember.voice?.channel;
+
+  // 檢查是否從語音頻道被踢出（舊有頻道 → 新頻道為 null）
+  if (oldVoiceChannel && !newVoiceChannel) {
+    const embed = createLogEmbed(
+      '🚷 使用者被踢出語音頻道',
+      `<@${newMember.id}> 被強制移出語音頻道 ${getMention(oldVoiceChannel)}。`
+    );
+    logChannel.send({ embeds: [embed] });
+  }
+});
+
+
+// =============================
 // 🗑️ 訊息刪除紀錄
 // =============================
 
