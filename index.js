@@ -3,12 +3,8 @@
 // =============================
 import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
 import dotenv from 'dotenv';
-import {
-  handleVoiceStateUpdate,
-  handleMessageDelete,
-  handleLoggerCommand,
-  loggerSlashCommands
-} from './logger.js';
+import * as logger from './logger.js';
+
 
 dotenv.config();
 
@@ -155,8 +151,12 @@ client.on('messageCreate', async message => {
 // =============================
 // 🔄 語音與訊息刪除事件監聽
 // =============================
-client.on('voiceStateUpdate', handleVoiceStateUpdate);
-client.on('messageDelete', handleMessageDelete);
+client.on('voiceStateUpdate', (oldState, newState) => {
+  logger.handleVoiceStateUpdate(oldState, newState, guildSettings);
+});
+client.on('messageDelete', (message) => {
+  logger.handleMessageDelete(message, guildSettings);
+});
 
 // =============================
 // 🚪 登入機器人
