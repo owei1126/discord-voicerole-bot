@@ -171,7 +171,7 @@ function getHelpText() {
   return `📝 可用指令列表：
 
 **🔹 Slash 指令：**
-/setvoice [語音頻道]        → 設定語音頻道，記錄用戶進出。  
+/setvoice [語音頻道]        → 設定語音頻道。  
 /setrole [身分組]            → 設定進語音時自動加上的身分組。  
 /status                     → 查看目前語音與身分組設定狀態。  
 /reset                      → 清除目前的語音與身分組設定。  
@@ -182,7 +182,7 @@ function getHelpText() {
 /deletelog                  → 查詢訊息與圖片刪除紀錄。
 
 **🔸 前綴指令（${prefix}）：**
-${prefix}setvoice [語音頻道ID]   → 設定語音頻道，記錄用戶進出。  
+${prefix}setvoice [語音頻道ID]   → 設定語音頻道。  
 ${prefix}setrole [身分組ID]       → 設定進語音時自動加上的身分組。  
 ${prefix}status                  → 查看目前設定狀態。  
 ${prefix}reset                   → 清除目前的語音與身分組設定。  
@@ -197,7 +197,7 @@ ${prefix}deletelog               → 查詢訊息與圖片刪除紀錄。`;
 ==========================
 📘 Help 指令說明對照表
 ==========================
-/setvoice     → 用於設定指定語音頻道，當有人進入或離開時會被記錄。  
+/setvoice     → 用於設定指定語音頻道。  
 /setrole      → 設定當有人進語音頻道時，自動加上的身分組。  
 /status       → 查看目前設定的語音頻道與身分組。  
 /reset        → 清除目前的設定（語音頻道與身分組）。  
