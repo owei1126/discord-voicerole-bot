@@ -32,8 +32,9 @@ function handleVoiceUpdate(oldState, newState, settings) {
     description = `🔊 <@${newState.id}> 加入了語音頻道 <#${newState.channelId}>`;
   } 
   else if (oldState.channel && newState.channel && oldState.channel.id !== newState.channel.id) {
-    logs[guildId].joinLeave.push(`[${now}] 🔁 ${userTag} 從 ${oldState.channel.name} 轉到 ${newState.channel.name}`);
+    description = `🔁 <@${newState.id}> 從語音頻道 <#${oldState.channelId}> 移動到 <#${newState.channelId}>`;
   }
+  
 
     else if (oldState.channelId && !newState.channelId) {
     description = `📤 <@${newState.id}> 離開了語音頻道 <#${oldState.channelId}>`;
