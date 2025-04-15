@@ -8,9 +8,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from './logger.js';
 
-config();
-const token = process.env.TOKEN;
-const clientId = process.env.CLIENT_ID;
+const token = process.env.TOKEN;  // 確保這裡讀取了環境變數
+const clientId = process.env.CLIENT_ID;  // 同樣，這裡也要是環境變數
 const prefix = 'w!';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -156,18 +155,7 @@ client.on(Events.InteractionCreate, async interaction => {
       saveSettings();
       return reply('🧹 已重置本伺服器的設定。');
     case 'help':
-      return reply(`📝 **可用指令列表**
-
-🔹 Slash 指令（可用 / 開頭輸入）：
-• \`/setvoice [語音頻道]\` - 設定語音頻道
-• \`/setrole [身分組]\` - 設定自動身分組
-• \`/setlogchannel [文字頻道]\` - 記錄傳送頻道
-• \`/status\` - 查看目前設定
-• \`/reset\` - 重置本伺服器設定
-• \`/voicelog\` - 查詢語音進出紀錄
-• \`/selfmute\` - 查詢使用者開/關麥
-• \`/modmute\` - 查詢被靜音/拒聽紀錄
-• \`/deletelog\` - 查詢訊息刪除紀錄`);
+      return reply(`📝 **可用指令列表**`);
     case 'voicelog':
       return logger.sendVoiceLog(channel, guildId);
     case 'selfmute':
