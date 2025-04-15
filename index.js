@@ -1,5 +1,7 @@
 import { Client, GatewayIntentBits, Partials, Collection, Events, PermissionsBitField, ChannelType, Routes } from 'discord.js';
 import { config } from 'dotenv';
+config(); // ⚠️ 這一行是必要的！
+
 import { REST } from '@discordjs/rest';
 import fs from 'fs';
 import path from 'path';
