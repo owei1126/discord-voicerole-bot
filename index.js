@@ -130,42 +130,49 @@ const rest = new REST({ version: '10' }).setToken(token);
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  const { commandName, options, guildId, channel, reply } = interaction;
+  const { commandName, options, guildId, channel } = interaction;
   settings[guildId] ||= {};
 
-  switch (commandName) {
-    case 'setvoice':
-      settings[guildId].voiceChannel = options.getChannel('channel').id;
-      saveSettings();
-      return reply('✅ 語音頻道已設定。');
-    case 'setrole':
-      settings[guildId].role = options.getRole('role').id;
-      saveSettings();
-      return reply('✅ 身分組已設定。');
-    case 'setlogchannel':
-      settings[guildId].logChannel = options.getChannel('channel').id;
-      saveSettings();
-      return reply('✅ 紀錄頻道已設定。');
-    case 'status':
-      return reply(
-        `📌 當前設定：\n語音頻道：<#${settings[guildId].voiceChannel || '未設定'}>\n` +
-        `身分組：<@&${settings[guildId].role || '未設定'}>\n` +
-        `紀錄頻道：<#${settings[guildId].logChannel || '未設定'}>`
-      );
-    case 'reset':
-      delete settings[guildId];
-      saveSettings();
-      return reply('🧹 已重置本伺服器的設定。');
-    case 'help':
-      return reply(`📝 **可用指令列表**`);
-    case 'voicelog':
-      return logger.sendVoiceLog(channel, guildId);
-    case 'selfmute':
-      return logger.sendSelfMuteLog(channel, guildId);
-    case 'modmute':
-      return logger.sendModMuteLog(channel, guildId);
-    case 'deletelog':
-      return logger.sendDeleteLog(channel, guildId);
+  try {
+    switch (commandName) {
+      case 'setvoice':
+        settings[guildId].voiceChannel = options.getChannel('channel').id;
+        saveSettings();
+        return await interaction.reply('✅ 語音頻道已設定。');
+      case 'setrole':
+        settings[guildId].role = options.getRole('role').id;
+        saveSettings();
+        return await interaction.reply('✅ 身分組已設定。');
+      case 'setlogchannel':
+        settings[guildId].logChannel = options.getChannel('channel').id;
+        saveSettings();
+        return await interaction.reply('✅ 紀錄頻道已設定。');
+      case 'status':
+        return await interaction.reply(
+          `📌 當前設定：\n語音頻道：<#${settings[guildId].voiceChannel || '未設定'}>\n` +
+          `身分組：<@&${settings[guildId].role || '未設定'}>\n` +
+          `紀錄頻道：<#${settings[guildId].logChannel || '未設定'}>`
+        );
+      case 'reset':
+        delete settings[guildId];
+        saveSettings();
+        return await interaction.reply('🧹 已重置本伺服器的設定。');
+      case 'help':
+        return await interaction.reply(`📝 **可用指令列表**`);
+      case 'voicelog':
+        return await logger.sendVoiceLog(channel, guildId);
+      case 'selfmute':
+        return await logger.sendSelfMuteLog(channel, guildId);
+      case 'modmute':
+        return await logger.sendModMuteLog(channel, guildId);
+      case 'deletelog':
+        return await logger.sendDeleteLog(channel, guildId);
+    }
+  } catch (err) {
+    console.error(`❌ 執行指令時發生錯誤：`, err);
+    if (!interaction.replied) {
+      await interaction.reply({ content: '❌ 執行指令時發生錯誤。', ephemeral: true });
+    }
   }
 });
 
