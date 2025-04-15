@@ -124,7 +124,27 @@ const commands = [
   },
   { name: 'status', description: '查看目前設定' },
   { name: 'reset', description: '重置本伺服器設定' },
-  { name: 'help', description: '顯示指令列表' }
+  { name: 'help', description: '顯示指令列表' },
+
+  {
+    name: 'clear-setting',
+    description: '🔧 清除指定設定項目',
+    options: [
+      {
+        name: 'type',
+        description: '要清除的項目',
+        type: 3, // STRING
+        required: true,
+        choices: [
+          { name: '語音頻道設定', value: 'voiceChannel' },
+          { name: '身分組設定', value: 'role' },
+          { name: '語音日誌頻道', value: 'voiceLogChannel' },
+          { name: '訊息日誌頻道', value: 'msgLogChannel' }
+        ]
+      }
+    ]
+  }
+  
 ];
 
 // ✅ 處理 Slash 指令互動事件
@@ -172,6 +192,16 @@ client.on(Events.InteractionCreate, async interaction => {
         return await interaction.reply('🧹 已重置本伺服器的設定。');
       case 'help':
         return await interaction.reply('📖 請使用 `/help` 或 `w!help` 查看完整指令列表');
+      case 'clear-setting':
+        const target = options.getString('target');
+          if (settings[guildId] && settings[guildId][target]) {
+            delete settings[guildId][target];
+            saveSettings();
+            return await interaction.reply(`🗑️ 已清除設定項目：\`${target}\``);
+          } else {
+            return await interaction.reply(`⚠️ 找不到設定項目：\`${target}\` 或尚未設定。`);
+          } 
+        
     }
   } catch (err) {
     console.error(`❌ 執行指令時發生錯誤：`, err);

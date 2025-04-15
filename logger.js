@@ -30,7 +30,12 @@ function handleVoiceUpdate(oldState, newState, settings) {
   let description = '';
   if (!oldState.channelId && newState.channelId) {
     description = `🔊 <@${newState.id}> 加入了語音頻道 <#${newState.channelId}>`;
-  } else if (oldState.channelId && !newState.channelId) {
+  } 
+  else if (oldState.channel && newState.channel && oldState.channel.id !== newState.channel.id) {
+    logs[guildId].joinLeave.push(`[${now}] 🔁 ${userTag} 從 ${oldState.channel.name} 轉到 ${newState.channel.name}`);
+  }
+
+    else if (oldState.channelId && !newState.channelId) {
     description = `📤 <@${newState.id}> 離開了語音頻道 <#${oldState.channelId}>`;
   } else if (oldState.selfMute !== newState.selfMute) {
     description = newState.selfMute
@@ -80,8 +85,19 @@ async function handleMessageDelete(message, settings) {
 
   // ✅ 附件處理（顯示網址）
   if (message.attachments.size > 0) {
-    const urls = message.attachments.map(a => a.url);
-    embed.addFields({ name: '🖼️ 附件', value: urls.join('\n') });
+    if (message.attachments.size > 0) {
+      const fields = [];
+      message.attachments.forEach(a => {
+        let field = `🔗 [點我開啟](${a.url})`;
+        if (a.contentType?.startsWith('image/')) {
+          field += `\n👉 [預覽縮圖](${a.proxyURL})`;
+        }
+        fields.push(field);
+      });
+    
+      embed.addFields({ name: '🖼️ 附件', value: fields.join('\n\n') });
+    }
+    
   }
 
   logChannel.send({ embeds: [embed] }).catch(console.error);
