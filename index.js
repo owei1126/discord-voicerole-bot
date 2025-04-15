@@ -7,7 +7,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from './logger.js';
 
-const token = process.env.TOKEN;  // 確保這裡讀取了環境變數
+const token = process.env.DISCORD_TOKEN; // 確保這裡讀取了環境變數
+
+
+
 const clientId = process.env.CLIENT_ID;  // 同樣，這裡也要是環境變數
 const prefix = 'w!';
 const __filename = fileURLToPath(import.meta.url);
