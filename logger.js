@@ -89,15 +89,15 @@ async function handleMessageDelete(message, settings) {
     if (message.attachments.size > 0) {
       const fields = [];
       message.attachments.forEach(a => {
-        let field = `🔗 [點我開啟](${a.url})`;
-        if (a.contentType?.startsWith('image/')) {
-          field += `\n👉 [預覽縮圖](${a.proxyURL})`;
+        if (a.contentType?.startsWith('image/') && !embed.data.image) {
+          embed.setImage(a.url); // 只顯示第一張圖片為 Embed 圖片
         }
-        fields.push(field);
+        fields.push(`🔗 [點我開啟](${a.url})`);
       });
     
-      embed.addFields({ name: '🖼️ 附件', value: fields.join('\n\n') });
+      embed.addFields({ name: '🖼️ 附件', value: fields.join('\n') });
     }
+    
     
   }
 
