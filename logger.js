@@ -1,106 +1,94 @@
-import fs from 'fs';
-const logFilePath = './voicelog.json';
+// ✅ logger.js：處理語音事件與訊息刪除紀錄的邏輯模組
+import { EmbedBuilder, ChannelType } from 'discord.js';
 
-if (!fs.existsSync(logFilePath)) {
-  fs.writeFileSync(logFilePath, JSON.stringify({}));
+// ✅ 語音事件處理（加入/離開/靜音/被強制靜音等）
+function handleVoiceUpdate(oldState, newState, settings) {
+  const guildId = newState.guild.id;
+  const guildSettings = settings[guildId] || {};
+  const targetChannelId = guildSettings.voiceChannel;
+  const targetRoleId = guildSettings.role;
+
+  const wasInChannel = oldState.channelId === targetChannelId;
+  const isInChannel = newState.channelId === targetChannelId;
+
+  // ✅ 自動加身分組（加入目標語音頻道）
+  if (!wasInChannel && isInChannel && targetRoleId) {
+    newState.member.roles.add(targetRoleId).catch(console.error);
+  }
+
+  // ✅ 自動移除身分組（離開目標語音頻道）
+  if (wasInChannel && !isInChannel && targetRoleId) {
+    oldState.member.roles.remove(targetRoleId).catch(console.error);
+  }
+
+  // ✅ 建立 Embed 作為語音紀錄訊息
+  const embed = new EmbedBuilder()
+    .setColor(0x3498db)
+    .setAuthor({ name: newState.member.user.tag, iconURL: newState.member.user.displayAvatarURL() })
+    .setTimestamp();
+
+  let description = '';
+  if (!oldState.channelId && newState.channelId) {
+    description = `🔊 <@${newState.id}> 加入了語音頻道 <#${newState.channelId}>`;
+  } else if (oldState.channelId && !newState.channelId) {
+    description = `📤 <@${newState.id}> 離開了語音頻道 <#${oldState.channelId}>`;
+  } else if (oldState.selfMute !== newState.selfMute) {
+    description = newState.selfMute
+      ? `🤐 <@${newState.id}> 關閉了自己的麥克風`
+      : `🎙️ <@${newState.id}> 開啟了自己的麥克風`;
+  } else if (oldState.selfDeaf !== newState.selfDeaf) {
+    description = newState.selfDeaf
+      ? `🙉 <@${newState.id}> 關閉了自己的耳機`
+      : `👂 <@${newState.id}> 開啟了自己的耳機`;
+  } else if (oldState.serverMute !== newState.serverMute) {
+    description = newState.serverMute
+      ? `🔇 <@${newState.id}> 被伺服器靜音`
+      : `🔊 <@${newState.id}> 被解除靜音`;
+  } else if (oldState.serverDeaf !== newState.serverDeaf) {
+    description = newState.serverDeaf
+      ? `🚫🎧 <@${newState.id}> 被伺服器拒聽`
+      : `✅🎧 <@${newState.id}> 被解除拒聽`;
+  }
+
+  if (!description) return;
+
+  embed.setDescription(description);
+
+  // ✅ 發送 Embed 到語音紀錄頻道
+  const logChannelId = guildSettings.voiceLogChannel || guildSettings.logChannel;
+  const logChannel = newState.guild.channels.cache.get(logChannelId);
+  if (logChannel?.type === ChannelType.GuildText) {
+    logChannel.send({ embeds: [embed] }).catch(console.error);
+  }
 }
 
-const loadLogs = () => JSON.parse(fs.readFileSync(logFilePath));
-const saveLogs = (logs) => fs.writeFileSync(logFilePath, JSON.stringify(logs, null, 2));
+// ✅ 訊息刪除事件處理
+async function handleMessageDelete(message, settings) {
+  const guildId = message.guild?.id;
+  if (!guildId || !settings[guildId]) return;
 
-const getLogChannel = (guild, settings) => {
-  const guildId = guild.id;
-  const logChannelId = settings[guildId]?.logChannel;
-  return logChannelId ? guild.channels.cache.get(logChannelId) : null;
-};
+  const logChannelId = settings[guildId].messageLogChannel || settings[guildId].logChannel;
+  const logChannel = message.guild.channels.cache.get(logChannelId);
+  if (!logChannel || logChannel.type !== ChannelType.GuildText) return;
 
-const formatLog = (logArray) => {
-  if (!logArray || logArray.length === 0) return '⚠️ 找不到紀錄。';
-  return logArray.map((e, i) => `${i + 1}. ${e}`).join('\n');
-};
+  // ✅ 準備 Embed
+  const embed = new EmbedBuilder()
+    .setColor(0xe74c3c)
+    .setAuthor({ name: message.author?.tag || '未知使用者', iconURL: message.author?.displayAvatarURL() })
+    .setDescription(`🗑️ <@${message.author?.id}> 在 <#${message.channel.id}> 刪除了訊息：\n\`\`\`\n${message.content || '（無文字內容）'}\n\`\`\``)
+    .setTimestamp();
 
-export default {
-  handleVoiceUpdate(oldState, newState, settings) {
-    const guildId = newState.guild.id;
-    const logs = loadLogs();
-    logs[guildId] ||= {
-      joinLeave: [],
-      selfMute: [],
-      modMute: []
-    };
-
-    const userTag = newState.member.user.tag;
-    const now = new Date().toLocaleString('zh-TW');
-
-    if (!oldState.channel && newState.channel) {
-      logs[guildId].joinLeave.push(`[${now}] 🔊 ${userTag} 加入 ${newState.channel.name}`);
-      if (newState.channel.id === settings[guildId]?.voiceChannel) {
-        newState.member.roles.add(settings[guildId].role).catch(() => {});
-      }
-    } else if (oldState.channel && !newState.channel) {
-      logs[guildId].joinLeave.push(`[${now}] 🔇 ${userTag} 離開 ${oldState.channel.name}`);
-      if (oldState.channel.id === settings[guildId]?.voiceChannel) {
-        newState.member.roles.remove(settings[guildId].role).catch(() => {});
-      }
-    }
-
-    if (oldState.selfMute !== newState.selfMute) {
-      const status = newState.selfMute ? '關麥' : '開麥';
-      logs[guildId].selfMute.push(`[${now}] 🎙️ ${userTag} ${status}`);
-    }
-
-    if (oldState.mute !== newState.mute) {
-      const status = newState.mute ? '被管理員靜音' : '被取消靜音';
-      logs[guildId].modMute.push(`[${now}] 🚫 ${userTag} ${status}`);
-    }
-
-    if (oldState.deaf !== newState.deaf) {
-      const status = newState.deaf ? '被拒聽' : '被解除拒聽';
-      logs[guildId].modMute.push(`[${now}] 🚫 ${userTag} ${status}`);
-    }
-
-    saveLogs(logs);
-  },
-
-  handleMessageDelete(message, settings) {
-    if (!message.guild || !message.channel || message.author?.bot) return;
-
-    const guildId = message.guild.id;
-    const logChannel = getLogChannel(message.guild, settings);
-
-    let content = message.content || '(空訊息)';
-    if (message.attachments.size > 0) {
-      content += '\n📎 附件：' + message.attachments.map(a => a.url).join('\n');
-    }
-
-    const logMsg = `🗑️ ${message.author?.tag || '未知使用者'} 在 <#${message.channel.id}> 刪除訊息：\n${content}`;
-    logChannel?.send(logMsg);
-  },
-
-  sendVoiceLog(channel, guildId) {
-    const logs = loadLogs();
-    return channel.send('📋 語音進出紀錄：\n' + formatLog(logs[guildId]?.joinLeave));
-  },
-
-  sendSelfMuteLog(channel, guildId) {
-    const logs = loadLogs();
-    return channel.send('🎙️ 使用者開關麥紀錄：\n' + formatLog(logs[guildId]?.selfMute));
-  },
-
-  sendModMuteLog(channel, guildId) {
-    const logs = loadLogs();
-    return channel.send('🚫 被靜音/拒聽紀錄：\n' + formatLog(logs[guildId]?.modMute));
-  },
-
-  sendDeleteLog(channel, guildId) {
-    const logData = loadLogs();
-    const guildLogs = logData[guildId];
-    if (!guildLogs) return channel.send('⚠️ 沒有紀錄可查詢。');
-
-    return channel.send(
-      '📊 所有紀錄查詢請用：\n' +
-      '`/voicelog` `/selfmute` `/modmute` 查看詳細紀錄\n' +
-      '訊息刪除紀錄請看紀錄頻道的通知（含圖片與附件網址）'
-    );
+  // ✅ 附件處理（顯示網址）
+  if (message.attachments.size > 0) {
+    const urls = message.attachments.map(a => a.url);
+    embed.addFields({ name: '🖼️ 附件', value: urls.join('\n') });
   }
+
+  logChannel.send({ embeds: [embed] }).catch(console.error);
+}
+
+// ✅ 匯出模組函式
+export default {
+  handleVoiceUpdate,
+  handleMessageDelete
 };

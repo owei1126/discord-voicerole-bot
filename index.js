@@ -1,5 +1,6 @@
+// ✅ 載入環境變數與必要模組
 import { config } from 'dotenv';
-config(); // ⚠️ 這一行是必要的！
+config(); // ⚠️ 一定要放在最上面
 import { Client, GatewayIntentBits, Partials, Collection, Events, PermissionsBitField, ChannelType, Routes } from 'discord.js';
 import { REST } from '@discordjs/rest';
 import fs from 'fs';
@@ -7,47 +8,51 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from './logger.js';
 
-const token = process.env.DISCORD_TOKEN; // 確保這裡讀取了環境變數
-
-
-
-const clientId = process.env.CLIENT_ID;  // 同樣，這裡也要是環境變數
+// ✅ 初始化設定與 Discord Bot 基本資訊
+const token = process.env.DISCORD_TOKEN;
+const clientId = process.env.CLIENT_ID;
 const prefix = 'w!';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.MessageContent,
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers
   ],
   partials: [Partials.Message, Partials.Channel, Partials.GuildMember]
 });
 
+// ✅ 載入與儲存伺服器設定
 const settingsPath = path.join(__dirname, 'settings.json');
 const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath)) : {};
-
 const saveSettings = () => fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
+// ✅ Bot 啟動後顯示提示訊息
 client.once(Events.ClientReady, () => {
   console.log(`✅ Bot 已上線：${client.user.tag}`);
 });
 
+// ✅ 處理語音狀態更新（加入/離開、靜音等）
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
   logger.handleVoiceUpdate(oldState, newState, settings);
 });
 
+// ✅ 處理訊息刪除事件（包含圖片）
 client.on(Events.MessageDelete, async (message) => {
   logger.handleMessageDelete(message, settings);
 });
 
+// ✅ 前綴指令邏輯區塊（w! 開頭）
 client.on(Events.MessageCreate, async message => {
   if (message.author.bot || !message.guild) return;
   if (!message.content.toLowerCase().startsWith(prefix.toLowerCase())) return;
 
   const args = message.content.slice(prefix.length).trim().split(/ +/);
   const command = args.shift()?.toLowerCase();
-
   const guildId = message.guild.id;
   settings[guildId] ||= {};
 
@@ -64,7 +69,8 @@ client.on(Events.MessageCreate, async message => {
       return message.reply(
         `📌 當前設定：\n語音頻道：<#${settings[guildId].voiceChannel || '未設定'}>\n` +
         `身分組：<@&${settings[guildId].role || '未設定'}>\n` +
-        `紀錄頻道：<#${settings[guildId].logChannel || '未設定'}>`
+        `語音紀錄頻道：<#${settings[guildId].voiceLogChannel || settings[guildId].logChannel || '未設定'}>\n` +
+        `訊息紀錄頻道：<#${settings[guildId].messageLogChannel || settings[guildId].logChannel || '未設定'}>`
       );
     case 'reset':
       delete settings[guildId];
@@ -76,30 +82,20 @@ client.on(Events.MessageCreate, async message => {
 🔹 Slash 指令（可用 / 開頭輸入）：
 • \`/setvoice [語音頻道]\` - 設定語音頻道
 • \`/setrole [身分組]\` - 設定自動身分組
-• \`/setlogchannel [文字頻道]\` - 記錄傳送頻道
+• \`/setlogchannel [文字頻道]\` - 同時設定語音與訊息紀錄
+• \`/setvoicelogchannel [頻道]\` - 單獨設定語音紀錄頻道
+• \`/setmessagelogchannel [頻道]\` - 單獨設定訊息紀錄頻道
 • \`/status\` - 查看目前設定
 • \`/reset\` - 重置本伺服器設定
-• \`/voicelog\` - 查詢語音進出紀錄
-• \`/selfmute\` - 查詢使用者開/關麥
-• \`/modmute\` - 查詢被靜音/拒聽紀錄
-• \`/deletelog\` - 查詢訊息刪除紀錄
 
 🔸 前綴指令（大小寫不分，預設 \`w!\`）：
 • \`w!setvoice [語音頻道ID]\`
 • \`w!setrole [身分組ID]\`
-• \`w!status\`、\`w!reset\`
-• \`w!voicelog\`、\`w!selfmute\`、\`w!modmute\`、\`w!deletelog\``);
-    case 'voicelog':
-      return logger.sendVoiceLog(message.channel, message.guild.id);
-    case 'selfmute':
-      return logger.sendSelfMuteLog(message.channel, message.guild.id);
-    case 'modmute':
-      return logger.sendModMuteLog(message.channel, message.guild.id);
-    case 'deletelog':
-      return logger.sendDeleteLog(message.channel, message.guild.id);
+• \`w!status\`、\`w!reset\``);
   }
 });
 
+// ✅ Slash 指令註冊與處理邏輯
 const commands = [
   {
     name: 'setvoice',
@@ -113,24 +109,29 @@ const commands = [
   },
   {
     name: 'setlogchannel',
-    description: '設定紀錄發送頻道',
+    description: '設定通用紀錄頻道',
     options: [{ name: 'channel', description: '文字頻道', type: 7, required: true }]
+  },
+  {
+    name: 'setvoicelogchannel',
+    description: '設定語音紀錄頻道',
+    options: [{ name: 'channel', description: '語音紀錄的頻道', type: 7, required: true }]
+  },
+  {
+    name: 'setmessagelogchannel',
+    description: '設定訊息刪除紀錄頻道',
+    options: [{ name: 'channel', description: '訊息紀錄的頻道', type: 7, required: true }]
   },
   { name: 'status', description: '查看目前設定' },
   { name: 'reset', description: '重置本伺服器設定' },
-  { name: 'help', description: '顯示指令列表' },
-  { name: 'voicelog', description: '查詢語音進出紀錄' },
-  { name: 'selfmute', description: '查詢使用者開關麥紀錄' },
-  { name: 'modmute', description: '查詢被靜音/拒聽紀錄' },
-  { name: 'deletelog', description: '查詢訊息與圖片刪除紀錄' },
+  { name: 'help', description: '顯示指令列表' }
 ];
 
-const rest = new REST({ version: '10' }).setToken(token);
-
+// ✅ 處理 Slash 指令互動事件
 client.on(Events.InteractionCreate, async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  const { commandName, options, guildId, channel } = interaction;
+  const { commandName, options, guildId } = interaction;
   settings[guildId] ||= {};
 
   try {
@@ -144,29 +145,33 @@ client.on(Events.InteractionCreate, async interaction => {
         saveSettings();
         return await interaction.reply('✅ 身分組已設定。');
       case 'setlogchannel':
-        settings[guildId].logChannel = options.getChannel('channel').id;
+        const commonLogChannel = options.getChannel('channel').id;
+        settings[guildId].logChannel = commonLogChannel;
+        settings[guildId].voiceLogChannel = commonLogChannel;
+        settings[guildId].messageLogChannel = commonLogChannel;
         saveSettings();
-        return await interaction.reply('✅ 紀錄頻道已設定。');
+        return await interaction.reply('✅ 通用紀錄頻道已設定（語音 + 訊息）');
+      case 'setvoicelogchannel':
+        settings[guildId].voiceLogChannel = options.getChannel('channel').id;
+        saveSettings();
+        return await interaction.reply('✅ 語音紀錄頻道已設定。');
+      case 'setmessagelogchannel':
+        settings[guildId].messageLogChannel = options.getChannel('channel').id;
+        saveSettings();
+        return await interaction.reply('✅ 訊息紀錄頻道已設定。');
       case 'status':
         return await interaction.reply(
           `📌 當前設定：\n語音頻道：<#${settings[guildId].voiceChannel || '未設定'}>\n` +
           `身分組：<@&${settings[guildId].role || '未設定'}>\n` +
-          `紀錄頻道：<#${settings[guildId].logChannel || '未設定'}>`
+          `語音紀錄頻道：<#${settings[guildId].voiceLogChannel || settings[guildId].logChannel || '未設定'}>\n` +
+          `訊息紀錄頻道：<#${settings[guildId].messageLogChannel || settings[guildId].logChannel || '未設定'}>`
         );
       case 'reset':
         delete settings[guildId];
         saveSettings();
         return await interaction.reply('🧹 已重置本伺服器的設定。');
       case 'help':
-        return await interaction.reply(`📝 **可用指令列表**`);
-      case 'voicelog':
-        return await logger.sendVoiceLog(channel, guildId);
-      case 'selfmute':
-        return await logger.sendSelfMuteLog(channel, guildId);
-      case 'modmute':
-        return await logger.sendModMuteLog(channel, guildId);
-      case 'deletelog':
-        return await logger.sendDeleteLog(channel, guildId);
+        return await interaction.reply('📖 請使用 `/help` 或 `w!help` 查看完整指令列表');
     }
   } catch (err) {
     console.error(`❌ 執行指令時發生錯誤：`, err);
@@ -176,6 +181,7 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
+// ✅ 註冊 Slash 指令並啟動 Bot
 (async () => {
   try {
     await rest.put(Routes.applicationCommands(clientId), { body: commands });
