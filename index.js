@@ -182,7 +182,7 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 
-const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 // ✅ 註冊 Slash 指令並啟動 Bot
 (async () => {
   try {
