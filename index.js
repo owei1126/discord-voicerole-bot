@@ -61,10 +61,12 @@ client.on(Events.MessageCreate, async message => {
       settings[guildId].voiceChannel = args[0];
       saveSettings();
       return message.reply('✅ 語音頻道已設定。');
+
     case 'setrole':
       settings[guildId].role = args[0];
       saveSettings();
       return message.reply('✅ 身分組已設定。');
+
     case 'status':
       return message.reply(
         `📌 當前設定：\n語音頻道：<#${settings[guildId].voiceChannel || '未設定'}>\n` +
@@ -72,10 +74,34 @@ client.on(Events.MessageCreate, async message => {
         `語音紀錄頻道：<#${settings[guildId].voiceLogChannel || settings[guildId].logChannel || '未設定'}>\n` +
         `訊息紀錄頻道：<#${settings[guildId].messageLogChannel || settings[guildId].logChannel || '未設定'}>`
       );
+
     case 'reset':
       delete settings[guildId];
       saveSettings();
       return message.reply('🧹 已重置本伺服器的設定。');
+
+    case 'clear-setting':
+      const subTarget = args[0]?.toLowerCase();
+      if (!['voice', 'message', 'all'].includes(subTarget)) {
+        return message.reply('❌ 請輸入要清除的項目：`voice`、`message` 或 `all`');
+      }
+
+      if (subTarget === 'voice') {
+        delete settings[guildId].voiceLogChannel;
+        message.reply('🗑️ 已清除語音紀錄頻道設定');
+      } else if (subTarget === 'message') {
+        delete settings[guildId].messageLogChannel;
+        message.reply('🗑️ 已清除訊息紀錄頻道設定');
+      } else if (subTarget === 'all') {
+        delete settings[guildId].logChannel;
+        delete settings[guildId].voiceLogChannel;
+        delete settings[guildId].messageLogChannel;
+        message.reply('🗑️ 已清除共用紀錄頻道與語音/訊息紀錄設定');
+      }
+
+      saveSettings();
+      break;
+
     case 'help':
       return message.reply(`📝 **可用指令列表**
 
@@ -85,13 +111,16 @@ client.on(Events.MessageCreate, async message => {
 • \`/setlogchannel [文字頻道]\` - 同時設定語音與訊息紀錄
 • \`/setvoicelogchannel [頻道]\` - 單獨設定語音紀錄頻道
 • \`/setmessagelogchannel [頻道]\` - 單獨設定訊息紀錄頻道
+• \`/clear-setting [項目]\` - 刪除指定設定（語音/訊息/共用）
 • \`/status\` - 查看目前設定
 • \`/reset\` - 重置本伺服器設定
 
 🔸 前綴指令（大小寫不分，預設 \`w!\`）：
-• \`w!setvoice [語音頻道ID]\`
-• \`w!setrole [身分組ID]\`
-• \`w!status\`、\`w!reset\``);
+• \`w!setvoice [語音頻道ID]\` - 設定語音頻道（請填 ID）
+• \`w!setrole [身分組ID]\` - 設定自動身分組（請填 ID）
+• \`w!status\` - 查看目前設定
+• \`w!reset\` - 重置設定
+• \`w!clear-setting [voice/message/all]\` - 刪除指定設定`);
   }
 });
 
@@ -191,7 +220,36 @@ client.on(Events.InteractionCreate, async interaction => {
         saveSettings();
         return await interaction.reply('🧹 已重置本伺服器的設定。');
       case 'help':
-        return await interaction.reply('📖 請使用 `/help` 或 `w!help` 查看完整指令列表');
+        case 'help':
+  return await interaction.reply({
+    embeds: [{
+      color: 0x0099ff,
+      title: '📝 可用指令列表',
+      fields: [
+        {
+          name: '🔹 Slash 指令（可用 / 開頭輸入）',
+          value:
+            '• /setvoice [語音頻道] - 設定語音頻道\n' +
+            '• /setrole [身分組] - 設定自動身分組\n' +
+            '• /setlogchannel [文字頻道] - 同時設定語音與訊息紀錄\n' +
+            '• /setvoicelogchannel [頻道] - 單獨設定語音紀錄頻道\n' +
+            '• /setmessagelogchannel [頻道] - 單獨設定訊息紀錄頻道\n' +
+            '• /clear-setting [項目] - 刪除指定設定\n' +
+            '• /status - 查看目前設定\n' +
+            '• /reset - 重置本伺服器設定'
+        },
+        {
+          name: '🔸 前綴指令（大小寫不分，預設 w!）',
+          value:
+            '• w!setvoice [語音頻道ID]\n' +
+            '• w!setrole [身分組ID]\n' +
+            '• w!status、w!reset'
+        }
+      ],
+      footer: { text: '小幫手機器人 - 指令說明' }
+    }]
+  });
+
       case 'clear-setting':
         const target = options.getString('target');
           if (settings[guildId] && settings[guildId][target]) {
