@@ -1,5 +1,5 @@
 // ✅ logger.js：處理語音事件與訊息刪除紀錄的邏輯模組
-import { EmbedBuilder, ChannelType } from 'discord.js';
+import { EmbedBuilder, ChannelType,AuditLogEvent } from 'discord.js';
 
 // ✅ 語音事件處理（加入/離開/靜音/被強制靜音等）
 function handleVoiceUpdate(oldState, newState, settings) {
@@ -68,41 +68,76 @@ function handleVoiceUpdate(oldState, newState, settings) {
   }
 }
 
-// ✅ 訊息刪除事件處理
+// ✅ 訊息刪除事件處理（含抓取審核日誌）
+
+
 async function handleMessageDelete(message, settings) {
-  const guildId = message.guild?.id;
-  if (!guildId || !settings[guildId]) return;
+  const guild = message.guild;
+  const guildId = guild?.id;
+  if (!guild || !settings[guildId]) return;
 
   const logChannelId = settings[guildId].messageLogChannel || settings[guildId].logChannel;
-  const logChannel = message.guild.channels.cache.get(logChannelId);
+  const logChannel = guild.channels.cache.get(logChannelId);
   if (!logChannel || logChannel.type !== ChannelType.GuildText) return;
 
-  // ✅ 準備 Embed
+  // ✅ 預設訊息
+  let deleterText = `🗑️ <@${message.author?.id}> 在 <#${message.channel.id}> 刪除了訊息：`;
+
+  // ✅ 嘗試從 Audit Log 取得「是誰刪的」
+  try {
+    const fetchedLogs = await guild.fetchAuditLogs({
+      type: AuditLogEvent.MessageDelete,
+      limit: 1,
+    });
+    const deletionLog = fetchedLogs.entries.first();
+
+    if (
+      deletionLog &&
+      deletionLog.target?.id === message.author?.id &&
+      Date.now() - deletionLog.createdTimestamp < 5000
+    ) {
+      const executor = deletionLog.executor;
+      if (executor && executor.id !== message.author?.id) {
+        deleterText = `🗑️ <@${executor.id}> 刪除了 <@${message.author?.id}> 在 <#${message.channel.id}> 發送的訊息：`;
+      }
+    }
+  } catch (err) {
+    console.error('⚠️ 取得 Audit Log 時出錯：', err);
+  }
+
+  // ✅ 建立 Embed
   const embed = new EmbedBuilder()
     .setColor(0xe74c3c)
     .setAuthor({ name: message.author?.tag || '未知使用者', iconURL: message.author?.displayAvatarURL() })
-    .setDescription(`🗑️ <@${message.author?.id}> 在 <#${message.channel.id}> 刪除了訊息：\n\`\`\`\n${message.content || '（無文字內容）'}\n\`\`\``)
+    .setDescription(`${deleterText}\n\`\`\`\n${message.content || '（無文字內容）'}\n\`\`\``)
     .setTimestamp();
 
-  // ✅ 附件處理（顯示網址）
+  // ✅ 附件處理（自動預覽圖片）
   if (message.attachments.size > 0) {
-    if (message.attachments.size > 0) {
-      const fields = [];
-      message.attachments.forEach(a => {
-        if (a.contentType?.startsWith('image/') && !embed.data.image) {
-          embed.setImage(a.url); // 只顯示第一張圖片為 Embed 圖片
-        }
-        fields.push(`🔗 [點我開啟](${a.url})`);
-      });
-    
-      embed.addFields({ name: '🖼️ 附件', value: fields.join('\n') });
+    const firstAttachment = message.attachments.first();
+    if (firstAttachment?.contentType?.startsWith('image/')) {
+      embed.setImage(firstAttachment.url);
     }
-    
-    
+
+    const others = [];
+    message.attachments.forEach(a => {
+      let field = `🔗 [點我開啟](${a.url})`;
+      if (a.contentType?.startsWith('image/')) {
+        field += `（圖片預覽上方已顯示）`;
+      } else if (a.contentType?.startsWith('video/')) {
+        field += `（影片可點開播放）`;
+      }
+      others.push(field);
+    });
+
+    if (others.length > 0) {
+      embed.addFields({ name: '📎 附件', value: others.join('\n\n') });
+    }
   }
 
   logChannel.send({ embeds: [embed] }).catch(console.error);
 }
+
 
 // ✅ 匯出模組函式
 export default {
