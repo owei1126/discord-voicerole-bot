@@ -215,7 +215,7 @@ client.on(Events.InteractionCreate, async interaction => {
       return await interaction.reply({ content: '✅ 已設定語音紀錄頻道', ...getUserReplyOption(interaction.user.id) });
     }
 
-    case 'set-messagelog': {
+    case 'setmessagelog': {
       settings[guildId] ??= {};
       settings[guildId].messageLogChannel = options.getChannel('channel').id;
       saveSettings();
