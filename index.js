@@ -123,6 +123,21 @@ client.on(Events.MessageDelete, async message => {
 
 // === 指令處理區塊 ===
 client.on(Events.InteractionCreate, async interaction => {
+  if (interaction.isButton()) {
+    const copyTexts = {
+      copy_setvoice: '`w!setvoice 123456789012345678`',
+      copy_setrole: '`w!setrole 987654321098765432`'
+    };
+  
+    const copied = copyTexts[interaction.customId];
+    if (copied) {
+      return interaction.reply({
+        content: `✅ 已複製：${copied}`,
+        ephemeral: true
+      });
+    }
+  }
+  
   if (!interaction.isChatInputCommand()) return;
 
   const { commandName, options, guildId } = interaction;
@@ -131,36 +146,69 @@ client.on(Events.InteractionCreate, async interaction => {
     case 'help': {
       const embed = new EmbedBuilder()
         .setColor(0x4fc3f7)
-        .setTitle('📖 指令清單')
+        .setTitle('📝 可用指令列表')
         .setDescription([
-          '⚙️ **設定指令**',
-          '• `/set-voicechannel` ➜ 設定觸發語音頻道',
-          '• `/set-role` ➜ 設定自動身分組',
-          '• `/set-voicelog` ➜ 設定語音紀錄頻道',
-          '• `/set-messagelog` ➜ 設定訊息紀錄頻道',
-          '• `/clear-setting` ➜ 清除指定設定',
+          '🔹 **Slash 指令（/ 開頭輸入）**',
+          '• `/setvoice [語音頻道]` - 設定語音頻道',
+          '• `/setrole [身分組]` - 設定自動身分組',
+          '• `/setlogchannel [文字頻道]` - 同時設定語音與訊息紀錄',
+          '• `/setvoicelogchannel [頻道]` - 單獨設定語音紀錄頻道',
+          '• `/setmessagelogchannel [頻道]` - 單獨設定訊息紀錄頻道',
+          '• `/clear-setting [項目]` - 刪除指定設定（語音/訊息/共用）',
+          '• `/status` - 查看目前設定',
+          '• `/reset` - 重置本伺服器設定',
           '',
-          '👤 **使用者指令**',
-          '• `/setreplyprivacy` ➜ 設定 Slash 回覆是否僅自己可見'
-        ].join('\n'));
-      return await interaction.reply({ embeds: [embed], ...getUserReplyOption(interaction.user.id) });
+          '🔸 **前綴指令（預設 `w!`，大小寫皆可）**',
+          '• `w!setvoice 語音頻道ID`',
+          '• `w!setrole 身分組ID`',
+          '• `w!status`',
+          '• `w!reset`',
+          '• `w!clear-setting voice/message/all`'
+        ].join('\n'))
+        .setFooter({ text: '你可以用 / 或 w! 來操作指令唷！' });
+    
+      const row = {
+        type: 1, // ActionRow
+        components: [
+          {
+            type: 2, // Button
+            style: 2, // Secondary
+            label: '複製：w!setvoice 123456789012345678',
+            custom_id: 'copy_setvoice'
+          },
+          {
+            type: 2,
+            style: 2,
+            label: '複製：w!setrole 987654321098765432',
+            custom_id: 'copy_setrole'
+          }
+        ]
+      };
+    
+      await interaction.reply({
+        embeds: [embed],
+        components: [row],
+        ...getUserReplyOption(interaction.user.id)
+      });
+      break;
     }
+    
 
-    case 'set-voicechannel': {
+    case 'setvoice': {
       settings[guildId] ??= {};
       settings[guildId].voiceChannel = options.getChannel('channel').id;
       saveSettings();
       return await interaction.reply({ content: '✅ 已設定語音頻道', ...getUserReplyOption(interaction.user.id) });
     }
 
-    case 'set-role': {
+    case 'setrole': {
       settings[guildId] ??= {};
       settings[guildId].role = options.getRole('role').id;
       saveSettings();
       return await interaction.reply({ content: '✅ 已設定身分組', ...getUserReplyOption(interaction.user.id) });
     }
 
-    case 'set-voicelog': {
+    case 'setvoicelog': {
       settings[guildId] ??= {};
       settings[guildId].voiceLogChannel = options.getChannel('channel').id;
       saveSettings();
@@ -231,13 +279,34 @@ client.on(Events.MessageCreate, async message => {
       saveSettings();
       return message.reply(`🗑️ 已清除設定：\`${type}\``);
 
-    case 'help':
-      return message.reply([
-        '📖 **指令列表**',
-        '⚙️ 設定：`w!setvc #語音`、`w!setrole @身分組`、`w!setvoicelog #頻道`、`w!setmsglog #頻道`',
-        '🧹 清除：`w!clear 語音類型（voiceChannel / role / voiceLogChannel / messageLogChannel）`',
-        '❓ 查詢這個說明：`w!help`'
-      ].join('\n'));
+      case 'help':
+        return message.reply([
+          '📖 **指令列表**',
+          '',
+          '⚙️ 設定：',
+          '• `w!setvc #語音頻道` - 設定語音頻道',
+          '• `w!setrole @身分組` - 設定自動加上的身分組',
+          '• `w!setvoicelog #頻道` - 設定語音紀錄頻道',
+          '• `w!setmsglog #頻道` - 設定訊息紀錄頻道',
+          '',
+          '🧹 清除設定：',
+          '• `w!clear voiceChannel`',
+          '• `w!clear role`',
+          '• `w!clear voiceLogChannel`',
+          '• `w!clear messageLogChannel`',
+          '',
+          '👀 狀態查詢：',
+          '• `w!status` - 查看目前設定',
+          '',
+          '🔄 重置：',
+          '• `w!reset` - 重置所有設定',
+          '',
+          '⚙️ 其它設定：',
+          '• `/setreplyprivacy true/false` - 設定 Slash 指令回覆是否僅自己可見',
+          '',
+          '✅ Slash 指令與前綴指令皆可使用，請依照習慣選擇！'
+        ].join('\n'));
+  
   }
 });
 
